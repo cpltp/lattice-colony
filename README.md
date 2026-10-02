@@ -7,9 +7,7 @@
 
 三个互不依赖的算法，加起来不到 200 行。没有调度器，没有地图，没有全局蓝图。
 
-```
-[在线演示] demo/index.html
-```
+### ▶ **[在线演示](https://cpltp.github.io/lattice-colony/)** &nbsp;·&nbsp; 打开就能点，三个示例都在跑
 
 ---
 
@@ -98,6 +96,10 @@ const best = pickSlot(candidates, occupied, {
 ---
 
 ## 跑起来
+
+线上直接看：**https://cpltp.github.io/lattice-colony/**
+
+本地跑：
 
 ```bash
 node test/run.js          # 27 条断言，无依赖
