@@ -1,0 +1,316 @@
+/* ============================================================
+   base.css — 三套设计风格预设 + 通用组件骨架
+   用法：把 body 的 data-style 换成 dark / light / warm
+   一切尺寸来自 DESIGN.md 的真实 token，不要随手写数值
+   ============================================================ */
+
+/* ---------- 通用：非颜色 token（三套共用） ---------- */
+:root {
+  --r-xs: 4px;  --r-sm: 6px;  --r-md: 8px;  --r-lg: 12px;
+  --r-xl: 16px; --r-pill: 9999px;
+
+  --s-xxs: 4px; --s-xs: 8px;  --s-sm: 12px; --s-md: 16px;
+  --s-lg: 24px; --s-xl: 32px; --s-2xl: 48px; --s-section: 96px;
+
+  --max-w: 1200px;
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI",
+               "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+  --font-serif: "Tiempos Headline", "Cormorant Garamond", "Songti SC", serif;
+}
+
+/* ---------- A. dark：精密深色（linear 风） ---------- */
+[data-style="dark"] {
+  --primary: #5e6ad2;
+  --primary-hover: #828fff;
+  --on-primary: #ffffff;
+  --ink: #f7f8f8;
+  --ink-muted: #d0d6e0;
+  --ink-subtle: #8a8f98;
+  --ink-tertiary: #62666d;
+  --canvas: #010102;
+  --surface-1: #0f1011;
+  --surface-2: #141516;
+  --surface-3: #18191a;
+  --hairline: #23252a;
+  --hairline-strong: #34343a;
+  --success: #27a644;
+  --warn: #d4a017;
+  --error: #c64545;
+  --accent-2: #5db8a6;          /* teal，少量点缀 */
+  --shadow: none;               /* 深色风靠色块分层，不用阴影 */
+  --glow: 0 0 0 1px rgba(94,106,210,.35), 0 8px 32px rgba(94,106,210,.14);
+}
+
+/* ---------- B. light：黑白精确（vercel 风） ---------- */
+[data-style="light"] {
+  --primary: #171717;
+  --primary-hover: #000000;
+  --on-primary: #ffffff;
+  --ink: #171717;
+  --ink-muted: #4d4d4d;
+  --ink-subtle: #888888;
+  --ink-tertiary: #a1a1a1;
+  --canvas: #ffffff;
+  --surface-1: #fafafa;
+  --surface-2: #f5f5f5;
+  --surface-3: #ebebeb;
+  --hairline: #ebebeb;
+  --hairline-strong: #a1a1a1;
+  --success: #0070f3;
+  --warn: #f5a623;
+  --error: #ee0000;
+  --accent-2: #7928ca;          /* violet */
+  --link: #0070f3;
+  --shadow: 0 1px 3px rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.04);
+  --glow: 0 0 0 1px rgba(0,112,243,.25);
+}
+
+/* ---------- C. warm：暖色编辑风（claude 风） ---------- */
+[data-style="warm"] {
+  --primary: #cc785c;
+  --primary-hover: #a9583e;
+  --on-primary: #ffffff;
+  --ink: #141413;
+  --ink-muted: #3d3d3a;
+  --ink-subtle: #6c6a64;
+  --ink-tertiary: #8e8b82;
+  --canvas: #faf9f5;
+  --surface-1: #f5f0e8;
+  --surface-2: #efe9de;
+  --surface-3: #e8e0d2;
+  --surface-dark: #181715;
+  --on-dark: #faf9f5;
+  --hairline: #e6dfd8;
+  --hairline-strong: #d5cbbd;
+  --success: #5db872;
+  --warn: #d4a017;
+  --error: #c64545;
+  --accent-2: #5db8a6;
+  --shadow: 0 1px 3px rgba(20,20,19,.08);
+  --glow: 0 0 0 3px rgba(204,120,92,.15);
+}
+
+/* ============================================================
+   基础
+   ============================================================ */
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+[data-style="warm"] body { line-height: 1.6; }
+
+::selection { background: var(--primary); color: var(--on-primary); }
+
+a { color: var(--link, var(--primary)); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.wrap { max-width: var(--max-w); margin: 0 auto; padding: 0 var(--s-lg); }
+
+/* 段间距：统一 96px，这是"看起来贵"的第一来源 */
+section { padding: var(--s-section) 0; }
+
+/* ============================================================
+   排版：跨度要大（display 是 body 的 3~4 倍）
+   ============================================================ */
+h1, h2, h3, h4 { margin: 0 0 var(--s-md); font-weight: 600; }
+
+/* display：字重不加大，靠字号 + 负字距撑气势 */
+.h-display {
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin-bottom: var(--s-lg);
+}
+[data-style="warm"] .h-display {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: clamp(32px, 5vw, 64px);
+  letter-spacing: -0.02em;
+}
+[data-style="light"] .h-display { letter-spacing: -0.05em; }
+
+.h-section { font-size: clamp(24px, 3vw, 36px); line-height: 1.15;
+             letter-spacing: -0.02em; }
+.h-card    { font-size: 18px; font-weight: 500; line-height: 1.4;
+             margin-bottom: var(--s-xs); }
+
+.lede { font-size: 18px; color: var(--ink-muted); max-width: 62ch;
+        margin-bottom: var(--s-xl); }
+.muted { color: var(--ink-subtle); }
+.small { font-size: 14px; }
+
+/* 技术标签：等宽 + 大写字距，是最便宜的"专业感"来源 */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-subtle);
+  margin-bottom: var(--s-sm);
+}
+code, pre, .mono { font-family: var(--font-mono); font-size: 14px; }
+
+/* ============================================================
+   按钮
+   ============================================================ */
+.btn {
+  display: inline-flex; align-items: center; gap: var(--s-xs);
+  height: 40px; padding: 0 20px;
+  font-family: inherit; font-size: 14px; font-weight: 500;
+  border-radius: var(--r-md); border: 1px solid transparent;
+  cursor: pointer; white-space: nowrap;
+  transition: background .15s, border-color .15s, opacity .15s;
+}
+.btn-primary { background: var(--primary); color: var(--on-primary); }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+
+.btn-secondary {
+  background: transparent; color: var(--ink);
+  border-color: var(--hairline-strong);
+}
+.btn-secondary:hover { border-color: var(--ink-subtle); }
+
+.btn-on-dark {
+  background: var(--surface-3); color: var(--on-dark, var(--ink));
+  border-color: var(--hairline);
+}
+.btn-sm { height: 32px; padding: 0 14px; font-size: 13px; }
+.btn-icon { width: 36px; height: 36px; padding: 0; justify-content: center;
+            border-radius: var(--r-full, 9999px); }
+
+.btn-group { display: flex; flex-wrap: wrap; gap: var(--s-xs); }
+
+/* ============================================================
+   卡片
+   ============================================================ */
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-lg);
+  padding: var(--s-xl);
+}
+[data-style="light"] .card { background: var(--canvas); box-shadow: var(--shadow); }
+
+/* 深色卡片：在浅色风里用来"露出产品本体"，是最有效的节奏手段 */
+.card-dark {
+  background: var(--surface-dark, var(--surface-1));
+  color: var(--on-dark, var(--ink));
+  border-color: transparent;
+}
+.card-dark .muted { color: rgba(255,255,255,.55); }
+
+/* 强调卡：整块用主色，一套页面里最多出现一次 */
+.card-accent {
+  background: var(--primary); color: var(--on-primary);
+  border-color: transparent; padding: var(--s-2xl);
+}
+.card-accent .muted { color: rgba(255,255,255,.75); }
+
+.grid { display: grid; gap: var(--s-lg); align-items: start; }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 900px) { .grid-3 { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 640px) {
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  section { padding: var(--s-2xl) 0; }
+}
+
+/* ============================================================
+   导航 / 页脚
+   ============================================================ */
+.nav {
+  position: sticky; top: 0; z-index: 50;
+  height: 64px; display: flex; align-items: center;
+  background: color-mix(in srgb, var(--canvas) 88%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--hairline);
+}
+.nav .wrap { display: flex; align-items: center; gap: var(--s-lg); width: 100%; }
+.nav-brand { font-weight: 600; letter-spacing: -0.02em; }
+.nav-links { display: flex; gap: var(--s-lg); margin-left: auto;
+             font-size: 14px; font-weight: 500; }
+.nav-links a { color: var(--ink-subtle); }
+.nav-links a:hover, .nav-links a.on { color: var(--ink); text-decoration: none; }
+
+.footer {
+  padding: var(--s-2xl) 0; border-top: 1px solid var(--hairline);
+  color: var(--ink-subtle); font-size: 14px;
+}
+
+/* ============================================================
+   徽章 / 状态点
+   ============================================================ */
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: var(--r-pill);
+  background: var(--surface-2); color: var(--ink);
+  font-size: 13px; font-weight: 500;
+}
+.badge-accent { background: var(--primary); color: var(--on-primary);
+                font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.dot-ok { background: var(--success); }
+.dot-warn { background: var(--warn); }
+.dot-err { background: var(--error); }
+
+/* ============================================================
+   数据 / 代码
+   ============================================================ */
+pre {
+  margin: 0; padding: var(--s-lg); overflow-x: auto;
+  background: var(--surface-2); border: 1px solid var(--hairline);
+  border-radius: var(--r-lg); line-height: 1.6;
+}
+/* 深色 / 暖色风里，代码块比画布再暗一档，才"陷得进去" */
+[data-style="dark"] pre { background: #08090a; border-color: #1a1c1e; color: #d0d3d6; }
+[data-style="warm"] pre { background: var(--surface-dark); border-color: transparent;
+                          color: var(--on-dark); }
+:not(pre) > code {
+  padding: 2px 6px; border-radius: var(--r-xs);
+  background: var(--surface-2); font-size: .9em;
+}
+
+.kv { display: flex; justify-content: space-between; align-items: baseline;
+      padding: 10px 0; border-bottom: 1px solid var(--hairline); font-size: 14px; }
+.kv:last-child { border-bottom: none; }
+.kv b { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* ============================================================
+   工具类
+   ============================================================ */
+.stack > * + * { margin-top: var(--s-md); }
+.row { display: flex; gap: var(--s-md); align-items: center; flex-wrap: wrap; }
+.hairline { border-top: 1px solid var(--hairline); }
+.center { text-align: center; }
+.center .lede { margin-left: auto; margin-right: auto; }
+
+/* ============================================================
+   尺寸纪律（踩过的两个坑）
+   ───────────────────────────────────────────
+   ① 卡片里的正文一旦超过 ~34 字/行，页面立刻显得空旷廉价。
+      给卡片正文限宽，不要让它铺满卡片的宽度。
+   ② 三卡并排时，卡内文字长度差一倍 = 卡片高度差一倍 = 底部参差。
+      用「限宽 + 每卡字数控制在 ±20% 内」压住它，别靠 flex 撑平。
+   ============================================================ */
+/* 卡片内文字限宽：超过 ~46 字/行就开始显得散 */
+.card .small, .card p { max-width: 46ch; }
+.card .h-card + p { margin-top: 6px; }
+
+/* 等高只作用于"同一行并排"的卡片；两栏布局里强行等高反而露白 */
+.grid-3 > .card { display: flex; flex-direction: column; }
+.grid-2 > .card { height: 100%; }
+
+/* 视觉节奏：相邻 section 不许用同一种表面模式
+   canvas → 卡片 → 深色 → canvas → 强调色 → 深色页脚
+   这条是"看起来贵"的第一来源，比配色重要。 */

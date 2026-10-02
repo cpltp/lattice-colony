@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-style="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lattice Colony</title>
+<link rel="stylesheet" href="base.css">
+<style>
+/* 只放这个页面特有的东西。token 与通用组件全在 base.css 里。 */
+.stage{background:#08090a;border:1px solid #1a1c1e;border-radius:var(--r-lg);
+       display:block;width:100%;height:auto}
+.panel{background:var(--surface-1);border:1px solid var(--hairline);
+       border-radius:var(--r-lg);padding:var(--s-lg)}
+.panel h3{margin:0 0 4px;font-size:16px;font-weight:600;letter-spacing:-.01em}
+.panel .desc{font-size:14px;color:var(--ink-subtle);margin:0 0 var(--s-md);
+             line-height:1.5;max-width:44ch}
+.ctl{display:flex;flex-wrap:wrap;gap:6px;margin-top:var(--s-sm)}
+.ctl button{font-family:inherit;font-size:13px;height:30px;padding:0 12px;
+            border-radius:var(--r-sm);border:1px solid var(--hairline-strong);
+            background:transparent;color:var(--ink-muted);cursor:pointer}
+.ctl button:hover{border-color:var(--ink-subtle);color:var(--ink)}
+.ctl button.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.stat{font-family:var(--font-mono);font-size:12px;color:var(--ink-subtle);
+      margin-top:10px;min-height:1.4em}
+pre .c{color:#5c6370;font-style:italic}
+pre .k{color:#c678dd}
+pre .s{color:#98c379}
+pre .f{color:#61afef}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap">
+    <span class="nav-brand">lattice-colony</span>
+    <div class="nav-links">
+      <a href="#demo" class="on">演示</a>
+      <a href="#algo">算法</a>
+      <a href="#code">代码</a>
+    </div>
+  </div>
+</nav>
+
+<section>
+  <div class="wrap">
+    <div class="eyebrow">局部规则 · 无全局蓝图 · O(N)</div>
+    <h1 class="h-display">大小不一的方块<br>如何自己拼成一个形状</h1>
+    <p class="lede">
+      每个单元只能看见自己的四个邻居，没有任何一个知道"整体应该长什么样"。
+      它们仍然能拼出圆形、直线、空心方、十字、方块 —— 而且大小可以不一样。
+    </p>
+    <div class="btn-group">
+      <a class="btn btn-primary" href="#demo">看演示</a>
+      <a class="btn btn-secondary" href="#algo">读算法</a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 三个演示 ===== -->
+<section id="demo" style="padding-top:0">
+  <div class="wrap">
+    <div class="grid grid-3">
+      <div class="panel">
+        <h3>① 变尺寸排布</h3>
+        <p class="desc">同一行/列里格子大小不同，前缀和让它们紧贴，不留缝也不重叠。</p>
+        <canvas class="stage" id="c1" width="360" height="270"></canvas>
+        <div class="ctl">
+          <button data-a1="uniform">等大</button>
+          <button data-a1="mixed" class="on">混合</button>
+          <button data-a1="wild">悬殊</button>
+        </div>
+        <div class="stat" id="s1"></div>
+      </div>
+
+      <div class="panel">
+        <h3>② 形状的离散格数</h3>
+        <p class="desc">空心方只能给 8/16/24/32…，十字只能给 4a+1。拖数量看形状怎么跳。</p>
+        <canvas class="stage" id="c2" width="360" height="270"></canvas>
+        <div class="ctl" id="shapeBtns"></div>
+        <div class="stat" id="s2"></div>
+        <input type="range" id="r2" min="4" max="40" value="14"
+               style="width:100%;margin-top:8px" aria-label="数量">
+      </div>
+
+      <div class="panel">
+        <h3>③ 落位偏好</h3>
+        <p class="desc">黏附收益（抱团）vs 空间收益（不挤）。调权重看它往哪长。</p>
+        <canvas class="stage" id="c3" width="360" height="270"></canvas>
+        <div class="ctl">
+          <button data-a3="bond" class="on">抱团</button>
+          <button data-a3="mid">折中</button>
+          <button data-a3="space">铺开</button>
+          <button id="reset3">重来</button>
+        </div>
+        <div class="stat" id="s3"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 算法 ===== -->
+<section id="algo">
+  <div class="wrap">
+    <h2 class="h-section">三个算法</h2>
+    <p class="lede">都只依赖局部信息。没有调度器，没有地图。</p>
+    <div class="grid grid-3">
+      <div class="card">
+        <h3 class="h-card">① 行列前缀和排布</h3>
+        <p class="muted small">
+          先把每一列的最宽、每一行的最高各自前缀求和，坐标就是两个前缀和的交点。
+          <b style="color:var(--ink)">结构性对齐</b>，不是迭代松弛，所以零抖动。
+          已知的多边形/机器人自组装实现都假设单元等大，这条是为变尺寸写的。
+        </p>
+      </div>
+      <div class="card">
+        <h3 class="h-card">② 形状的离散格数</h3>
+        <p class="muted small">
+          不是"给定 N 塞进形状"，而是先知道
+          <b style="color:var(--ink)">每种形状能给出哪些格数</b>。
+          空心方卡死在 <code>8r</code>、十字卡死在 <code>4a+1</code>；
+          圆和直线则可以通过补壳/截断命中任意值。
+        </p>
+      </div>
+      <div class="card">
+        <h3 class="h-card">③ 黏附 + 空间双收益</h3>
+        <p class="muted small">
+          落位时算两笔账：贴上去之后同类多不多、那个格子旁边空不空。
+          两个权重的<b style="color:var(--ink)">比值</b>是连续难度旋钮 ——
+          偏空间会主动铺进缺口，偏黏附则只肯贴着同类挤。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 代码 ===== -->
+<section id="code">
+  <div class="wrap">
+    <div class="grid grid-2" style="gap:var(--s-2xl)">
+      <div>
+        <h2 class="h-section">排布：两个前缀和</h2>
+        <p class="lede">
+          每个格子的大小由外部数据决定，所以列与列的宽度不一样。
+          不能简单乘格距 —— 那样相邻方块之间会出现缝。
+        </p>
+      </div>
+      <div class="card card-dark">
+<pre><span class="c">// 每列最宽、每行最高</span>
+<span class="k">for</span> (<span class="k">const</span> c <span class="k">of</span> cells) {
+  colW[c.gx] = <span class="f">max</span>(colW[c.gx], c.w);
+  rowH[c.gy] = <span class="f">max</span>(rowH[c.gy], c.h);
+}
+
+<span class="c">// 前缀和 = 该列左边缘 / 该行上边缘</span>
+<span class="k">let</span> acc = <span class="s">0</span>;
+<span class="k">for</span> (<span class="k">let</span> x = <span class="s">0</span>; x &lt; cols; x++) {
+  colK[x] = acc; acc += colW[x];
+}
+
+<span class="c">// 坐标 = 前缀和 + 本格的一半</span>
+x = colK[c.gx] + colW[c.gx] / <span class="s">2</span>;
+y = rowK[c.gy] + rowH[c.gy] / <span class="s">2</span>;</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="card card-accent">
+      <div class="eyebrow" style="color:rgba(255,255,255,.7)">为什么值得单独拆出来</div>
+      <h2 class="h-section" style="margin-bottom:12px">变尺寸，是个被跳过的前提</h2>
+      <p class="muted" style="max-width:60ch">
+        aTAM、Kilobot，以及大多数多边形自组装实现，都建立在"所有单元一样大"之上。
+        一旦单元尺寸连续可变，排布、落位、形状匹配三件事都要重写。
+        这三段代码就是那个重写结果 —— 各自独立，可以单独拿去用。
+      </p>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap row">
+    <span>lattice-colony</span>
+    <span style="margin-left:auto" class="small">MIT License</span>
+  </div>
+</footer>
+
+<script type="module">
+import { layoutPrefixSum, layoutExtent } from '../src/layout-prefixsum.js';
+import { buildShape, shapeNames, actualCount,
+         discCount, ringCount, crossCount, squareCount } from '../src/shape-cardinality.js';
+import { scoreSlot, NEIGHBORS_4 } from '../src/placement-score.js';
+
+const COLS = 9, ROWS = 7;
+
+/* ---------- 通用 ---------- */
+function ctxOf(id) {
+  const cv = document.getElementById(id);
+  const g = cv.getContext('2d');
+  g.clearRect(0, 0, cv.width, cv.height);
+  return { cv, g };
+}
+function roundRect(g, x, y, w, h, r) {
+  g.beginPath();
+  g.moveTo(x + r, y);
+  g.arcTo(x + w, y, x + w, y + h, r);
+  g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r);
+  g.arcTo(x, y, x + w, y, r);
+  g.closePath();
+}
+// 确定性伪随机，保证每次刷新一样
+function rng(seed) {
+  let s = seed >>> 0;
+  return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+}
+
+/* ============================================================
+   ① 变尺寸排布
+   ============================================================ */
+const A1 = { mode: 'mixed' };
+const STATS1 = {
+  uniform: () => 0,
+  mixed:   () => 0.35,
+  wild:    () => 0.85,
+};
+
+function cellsA1() {
+  const r = rng(20261021);
+  const spread = STATS1[A1.mode]();
+  const out = [];
+  for (let gy = 0; gy < ROWS; gy++)
+    for (let gx = 0; gx < COLS; gx++) {
+      // 基准 24px，按 spread 抖动宽度与高度
+      const w = 24 * (1 - spread / 2 + spread * r());
+      const h = 24 * (1 - spread / 2 + spread * r());
+      // 让有些格子直接空掉，形状才有意思
+      if (r() < 0.18) continue;
+      out.push({ gx, gy, w, h });
+    }
+  return out;
+}
+
+function draw1() {
+  const { cv, g } = ctxOf('c1');
+  const cells = cellsA1();
+  const ext = layoutExtent(cells, { cols: COLS, rows: ROWS });
+  const rects = layoutPrefixSum(cells, { cols: COLS, rows: ROWS });
+  const ox = (cv.width - ext.w) / 2;
+  const oy = (cv.height - ext.h) / 2;
+
+  // 网格底
+  g.strokeStyle = '#1a1c1e';
+  g.lineWidth = 1;
+  for (let x = 0; x <= COLS; x++) {
+    g.beginPath(); g.moveTo(ox + x * 24, oy); g.lineTo(ox + x * 24, oy + ext.h); g.stroke();
+  }
+
+  rects.forEach((r, i) => {
+    const c = cells[i];
+    const t = (c.w * c.h) / (24 * 24);            // 面积比 → 颜色深浅
+    g.fillStyle = `rgba(94,106,210,${0.28 + Math.min(t, 1.4) * 0.45})`;
+    g.strokeStyle = 'rgba(130,143,255,.85)';
+    g.lineWidth = 1;
+    roundRect(g, ox + r.x - r.w / 2, oy + r.y - r.h / 2, r.w, r.h, 3);
+    g.fill(); g.stroke();
+  });
+
+  document.getElementById('s1').textContent =
+    `${cells.length} 格 · ${Math.round(ext.w)}×${Math.round(ext.h)}px · 抖动 0`;
+}
+
+document.querySelectorAll('[data-a1]').forEach(b => {
+  b.onclick = () => {
+    A1.mode = b.dataset.a1;
+    document.querySelectorAll('[data-a1]').forEach(x => x.classList.toggle('on', x === b));
+    draw1();
+  };
+});
+
+/* ============================================================
+   ② 形状的离散格数
+   ============================================================ */
+const A2 = { shape: 'ring', want: 14 };
+
+function draw2() {
+  const { cv, g } = ctxOf('c2');
+  const built = buildShape(A2.shape, A2.want);
+  const cells = built.cells;
+
+  const xs = cells.map(c => c[0]), ys = cells.map(c => c[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const gw = x1 - x0 + 1, gh = y1 - y0 + 1;
+  const S = Math.min((cv.width - 60) / gw, (cv.height - 60) / gh, 34);
+  const ox = (cv.width - gw * S) / 2, oy = (cv.height - gh * S) / 2;
+
+  // 虚线的"目标外框"
+  g.strokeStyle = 'rgba(94,106,210,.28)';
+  g.lineWidth = 1;
+  g.setLineDash([3, 3]);
+  g.strokeRect(ox - S * 0.5, oy - S * 0.5, gw * S + S, gh * S + S);
+  g.setLineDash([]);
+
+  const set = new Set(cells.map(c => c.join(',')));
+  for (const [x, y] of cells) {
+    const px = ox + (x - x0) * S, py = oy + (y - y0) * S;
+    g.fillStyle = 'rgba(94,106,210,.30)';
+    g.strokeStyle = 'rgba(130,143,255,.9)';
+    g.lineWidth = 1.2;
+    roundRect(g, px + 1.5, py + 1.5, S - 3, S - 3, 4);
+    g.fill(); g.stroke();
+  }
+
+  const exact = built.n === A2.want;
+  const el = document.getElementById('s2');
+  let note = '';
+  if (A2.shape === 'ring') note = `　序列 8r：8·16·24·32`;
+  if (A2.shape === 'cross') note = `　序列 4a+1：1·5·9·13·17`;
+  el.innerHTML = `想要 <b style="color:var(--ink)">${A2.want}</b> → 实际 ` +
+    `<b style="color:${exact ? '#27a644' : '#d4a017'}">${built.n}</b>` +
+    (exact ? ' ✓' : ' （跳跃）') + note;
+}
+
+const LABEL2 = { line: '直线', circle: '圆', ring: '空心方', cross: '十字', square: '方块' };
+const box2 = document.getElementById('shapeBtns');
+shapeNames.forEach(n => {
+  const b = document.createElement('button');
+  b.textContent = LABEL2[n] || n;
+  b.dataset.shape = n;
+  if (n === A2.shape) b.classList.add('on');
+  b.onclick = () => {
+    A2.shape = n;
+    box2.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    draw2();
+  };
+  box2.appendChild(b);
+});
+const r2 = document.getElementById('r2');
+r2.oninput = () => { A2.want = +r2.value; draw2(); };
+
+/* ============================================================
+   ③ 落位偏好：让它自己一个个长上去
+   ============================================================ */
+const A3 = { bond: 1.0, space: 0.15, placed: [], t: 0, target: 22 };
+const GAIN3 = {
+  bond:  { bondGain: 1.0, spaceGain: 0.00 },   // 只抱团 → 紧凑团块
+  mid:   { bondGain: 0.6, spaceGain: 1.10 },   // 略微让位 → 有分支的团块
+  space: { bondGain: 0.2, spaceGain: 1.10 },   // 几乎不管黏附 → 铺开成网
+};
+
+const GW3 = 13, GH3 = 9;
+
+function reset3() {
+  A3.placed = [[6, 4]];          // 从中心一颗开始
+  A3.t = 0;
+}
+
+function occupied3(x, y) { return A3.placed.some(c => c[0] === x && c[1] === y); }
+
+function frontier3() {
+  const seen = new Set(), out = [];
+  for (const [px, py] of A3.placed) {
+    for (const [dx, dy] of NEIGHBORS_4) {
+      const x = px + dx, y = py + dy;
+      if (x < 0 || y < 0 || x >= GW3 || y >= GH3) continue;
+      const k = x + ',' + y;
+      if (seen.has(k) || occupied3(x, y)) continue;
+      seen.add(k);
+      out.push([x, y]);
+    }
+  }
+  return out;
+}
+
+function draw3() {
+  const { cv, g } = ctxOf('c3');
+  const S = 24;
+  const ox = (cv.width - GW3 * S) / 2, oy = (cv.height - GH3 * S) / 2;
+
+  g.strokeStyle = '#16181a'; g.lineWidth = 1;
+  for (let x = 0; x <= GW3; x++) {
+    g.beginPath(); g.moveTo(ox + x * S, oy); g.lineTo(ox + x * S, oy + GH3 * S); g.stroke();
+  }
+  for (let y = 0; y <= GH3; y++) {
+    g.beginPath(); g.moveTo(ox, oy + y * S); g.lineTo(ox + GW3 * S, oy + y * S); g.stroke();
+  }
+
+  // 相邻连线（让它看起来是个整体）
+  g.strokeStyle = 'rgba(130,143,255,.5)'; g.lineWidth = 2;
+  for (const [x, y] of A3.placed) {
+    for (const [dx, dy] of [[1, 0], [0, 1]]) {
+      if (occupied3(x + dx, y + dy)) {
+        g.beginPath();
+        g.moveTo(ox + (x + .5) * S, oy + (y + .5) * S);
+        g.lineTo(ox + (x + dx + .5) * S, oy + (y + dy + .5) * S);
+        g.stroke();
+      }
+    }
+  }
+
+  for (const [x, y] of A3.placed) {
+    g.fillStyle = 'rgba(94,106,210,.38)';
+    g.strokeStyle = 'rgba(130,143,255,.95)'; g.lineWidth = 1.3;
+    roundRect(g, ox + x * S + 2, oy + y * S + 2, S - 4, S - 4, 4);
+    g.fill(); g.stroke();
+  }
+
+  const opt = { ...GAIN3[A3.pick || 'bond'], cols: GW3, rows: GH3 };
+  document.getElementById('s3').textContent =
+    `${A3.placed.length} / ${A3.target} 格 · 黏附 ${opt.bondGain} × 空间 ${opt.spaceGain}`;
+}
+
+/** 每帧长一颗：在候选里挑分最高的 */
+function grow3() {
+  if (A3.placed.length >= A3.target) return;
+  const cands = frontier3();
+  if (!cands.length) return;
+  let best = null, bestS = -Infinity;
+  const opt = { ...GAIN3[A3.pick || 'bond'], cols: GW3, rows: GH3 };
+  for (const [x, y] of cands) {
+    const s = scoreSlot(x, y, occupied3, opt);
+    if (s > bestS) { bestS = s; best = [x, y]; }
+  }
+  if (best) A3.placed.push(best);
+}
+
+document.querySelectorAll('[data-a3]').forEach(b => {
+  b.onclick = () => {
+    A3.pick = b.dataset.a3;
+    document.querySelectorAll('[data-a3]').forEach(x => x.classList.toggle('on', x === b));
+    reset3(); draw3();
+  };
+});
+document.getElementById('reset3').onclick = () => { reset3(); draw3(); };
+
+/* ---------- 主循环 ---------- */
+A3.pick = 'bond';
+reset3();
+
+let last = performance.now(), acc = 0;
+function loop(now) {
+  requestAnimationFrame(loop);        // 先续帧，任何异常都不会断掉循环
+  const dt = Math.min((now - last) / 1000, 0.1); last = now;
+  acc += dt;
+  if (acc > 0.09) { acc = 0; grow3(); draw3(); }   // 每 90ms 长一颗
+}
+
+try { draw1(); draw2(); draw3(); }
+catch (e) { console.error('init failed', e); }
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
